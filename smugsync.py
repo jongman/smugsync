@@ -239,8 +239,8 @@ def get_album_id(job):
         subcategory_name = "-".join(job["date"].split("-")[:2])
         subcategory_id = get_subcategory_id(subcategory_name)
         albums[album_name] = api.create_album(album_name, category_id,
-                {"Public": HIDDEN_GALLERIES,
-                 "SmugSearchable": HIDDEN_GALLERIES,
+                {"Public": not HIDDEN_GALLERIES,
+                 "SmugSearchable": not HIDDEN_GALLERIES,
                  "SubCategoryID": subcategory_id})
     return albums[album_name]
 
