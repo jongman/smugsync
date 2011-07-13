@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import time
 import datetime
 import minimal_exif_reader
 import hashlib
@@ -241,12 +242,12 @@ def upload_all():
             done)
 
 def process():
-    logging.info("Started checking!")
-
-    copy_all()
-    upload_all()
-
-    logging.info("We are done. :-)")
+    while True:
+        logging.info("Started checking!")
+        copy_all()
+        upload_all()
+        logging.info("We are done. :-)")
+        time.sleep(60)
 
 def main():
     setup()
