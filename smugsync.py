@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import datetime
-import logging
-import logging.handlers
 import minimal_exif_reader
 import hashlib
 import os
@@ -12,6 +10,7 @@ import shutil
 import smtplib
 import sys
 from config import *
+import utils
 
 PROJECT_PATH = os.path.dirname(__file__)
 SHELF_PATH = os.path.join(PROJECT_PATH, "shelf.db")
@@ -26,20 +25,8 @@ def setup():
     copied = open_shelf("copied.db")
     uploaded = open_shelf("uploaded.db")
 
-    logger = logging.getLogger("")
-    logger.setLevel(LOGGING_LEVEL)
-
     log_path = os.path.join(PROJECT_PATH, "smugsync.log")
-
-    formatter = logging.Formatter(fmt="%(asctime)-15s %(levelname)s %(message)s")
-    handler = logging.handlers.RotatingFileHandler(log_path,
-            maxBytes=1024*1024, backupCount=3)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    utils.setup_logging(log_path)
 
 def get_extension(filename):
     return filename.split(".")[-1].lower()
