@@ -241,6 +241,8 @@ def upload_all():
         jobs.reverse()
         for _, key in jobs:
             job = copied[key]
+            # ignore large files for now: need some other way to upload things
+            if job["filesize"] >= MAX_FILE_SIZE: continue
             album_name = job["date"] + "-raw"
             if album_name not in albums:
                 albums[album_name] = api.create_album(album_name, category,

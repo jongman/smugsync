@@ -23,6 +23,17 @@ class API(object):
     def get_albums(self):
         return self._call("smugmug.albums.get")["Albums"]
 
+    def get_images(self, album_id, album_key):
+        return self._call("smugmug.images.get", {"AlbumID": album_id,
+            "AlbumKey": album_key})["Images"]
+
+    def change_image_setting(self, image_id, args={}):
+        args = dict(args)
+        args["ImageID"] = image_id
+        return self._call("smugmug.images.changeSettings", {"ImageID":
+            image_id})
+
+
     def get_categories(self):
         cate = self._call("smugmug.categories.get")
         return dict((d["Title"], d["id"]) for d in cate["Categories"])
