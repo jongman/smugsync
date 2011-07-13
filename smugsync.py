@@ -37,9 +37,14 @@ def scan_incoming():
     extset = set([ext.lower() for ext in RECOGNIZED_EXTS])
     ret = []
     for incoming in READ_FROM:
-        for path, __, files in os.walk(incoming):
-            ret += [os.path.join(path, file) for file in files
-                    if get_extension(file) in extset]
+        try:
+            for path, __, files in os.walk(incoming):
+                ret += [os.path.join(path, file) for file in files
+                        if get_extension(file) in extset]
+        except Exception as e:
+            logging.error("scan_incoming got an exception while scanning"
+                    "%s.\nException message: %s\nNo biggie, will try later "
+                    "again.", incoming, str(e))
     return sorted(ret)
 
 def md5file(file_path, max_len=None):
@@ -51,15 +56,21 @@ def md5file(file_path, max_len=None):
 def get_copy_jobs(files):
     copy = []
     for path in files:
-        filesize = get_file_size(path)
-        # read a small portion of the whole file to generate unique id
-        md5 = md5file(path, SIGNATURE_SIZE)
-        key = "|".join([str(filesize), md5])
-        if key in copied or key in uploaded: continue
-        logging.info("Recognized key %s. Adding to copy queue.", key)
-        filename = os.path.basename(path)
-        copy.append({"key": key, "origin": path, "filename": filename,
-            "filesize": filesize, "md5": md5file(path)})
+        try:
+            filesize = get_file_size(path)
+            # read a small portion of the whole file to generate unique id
+            md5 = md5file(path, SIGNATURE_SIZE)
+            key = "|".join([str(filesize), md5])
+            if key in copied or key in uploaded: continue
+            logging.info("Recognized key %s. Adding to copy queue.", key)
+            filename = os.path.basename(path)
+            copy.append({"key": key, "origin": path, "filename": filename,
+                "filesize": filesize, "md5": md5file(path)})
+        except Exception as e:
+            logging.error("get_copy_jobs got an error while copying %s.\n"
+                    "Exception message: %s\nNo biggie, will try later "
+                    "again.", path, str(e))
+
     return copy
 
 def notify(subject, msg):
@@ -250,8 +261,11 @@ def process():
         time.sleep(60)
 
 def main():
-    setup()
-    process()
+    try:
+        setup()
+        process()
+    except Exception as e:
+        logging.error("Uncaught exception. Message: %s. How sad.", str(e))
 
 if __name__ == "__main__":
     main()
