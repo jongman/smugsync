@@ -88,8 +88,8 @@ def notify_upload_start(jobs):
             "Hello! Just so you know I started uploading files from "
             "your hard drive. I'll let you know once it gets finished.")
 
-def notify_upload_finish():
-    logging.info("Notifying upload finish of %d files.", len(jobs))
+def notify_upload_finish(done):
+    logging.info("Notifying upload finish of %d files.", done)
     notify("SmugSync: Upload Finished", 
             "Hello! Upload is finished so you'll be able to see your files "
             "soon.")
@@ -213,9 +213,12 @@ def upload_all():
     categories = api.get_categories()
     category = categories[DEFAULT_CATEGORY]
     done, cnt = 0, len(copied)
-    try:        
-        while copied:
-            key, job = head(copied)
+    try:
+        jobs = [(val["dest"], key) for key, val in copied.iteritems()]
+        jobs.sort()
+        jobs.reverse()
+        for _, key in jobs:
+            job = copied[key]
             album_name = job["date"] + "-raw"
             if album_name not in albums:
                 albums[album_name] = api.create_album(album_name, category,
@@ -230,7 +233,7 @@ def upload_all():
             done += 1
             logging.info("Uploaded %s. That's %d out of %d.", job["dest"], 
                     done, cnt)
-        notify_upload_finish()
+        notify_upload_finish(done)
     except Exception as e:
         logging.info("Exception: %s", str(e))
         notify_upload_fail(done)
