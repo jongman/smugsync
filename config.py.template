@@ -1,9 +1,27 @@
 # -*- coding: utf-8 -*-
+import logging
+
+LOGGING_LEVEL = logging.DEBUG
+DEFAULT_CATEGORY = ""
+HIDDEN_BY_DEFAULT = False
+
+RECOGNIZED_EXTS = ["jpg", "mov", "avi"]
+SIGNATURE_SIZE = 1024*1024
 
 SMUGMUG_ID = ""
 SMUGMUG_PASSWORD = ""
-GMAIL_ID = ""
-GMAIL_PASSWORD = ""
+SMUGMUG_API = ""
 
-READ_FROM = ""
+# notification setup
+SMTP_SERVER = "smtp.gmail.com:587"
+SMTP_SERVER = None
+SMTP_ID = ""
+SMTP_PASSWORD = ""
+FROM_EMAIL = ""
+TO_EMAIL = ""
+
+READ_FROM = [
+        "",
+        "",
+        ]
 WRITE_TO = ""
