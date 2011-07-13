@@ -22,10 +22,10 @@ def open_shelf(filename):
     return shelve.open(path)
 
 def setup():
-    global copied, uploaded, cache
-    cache = open_shelf("cache.db")
+    global copied, uploaded, last_scanned
     copied = open_shelf("copied.db")
     uploaded = open_shelf("uploaded.db")
+    last_scanned = []
 
     log_path = os.path.join(PROJECT_PATH, "smugsync.log")
     utils.setup_logging(log_path)
@@ -45,6 +45,8 @@ def scan_incoming():
             logging.error("scan_incoming got an exception while scanning"
                     "%s.\nException message: %s\nNo biggie, will try later "
                     "again.", incoming, str(e))
+            return []
+    logging.info("Recognized %d scanned.", len(ret))
     return sorted(ret)
 
 def md5file(file_path, max_len=None):
@@ -83,16 +85,22 @@ def notify(subject, msg):
     server.sendmail(FROM_EMAIL, TO_EMAIL, msg)
     server.quit()
 
-def notify_copy_start(jobs):
-    logging.info("Start copying %d files.", len(jobs))
-    notify("SmugSync: Copy Started (%d files)" % len(jobs),
-        "Hello! Just so you know that I started copying files from "
+def notify_copy_start():
+    logging.info("Start scanning for copy jobs ..")
+    notify("SmugSync: Copy Initiated",
+        "Hello! Just so you know that I started scanning files from "
         "your SD card. So don't eject it alright?")
 
-def notify_copy_finish():
+def notify_copy_finish(copied, failed):
     logging.info("Copy done.")
-    notify("SmugSync: Copy Finished",
-        "Hello! Copy has finished. Now you can eject your SD card.")
+    message = "Hello! Copy has finished. Now you can eject your SD card."
+    if failed:
+        message += ("\nBy the way, some files we have failed to copy. "
+                "Might be a couple reasons -- disk full is one comes to "
+                "mind -- so check it out. List of failed files follows.\n"
+                + "\n".join(failed))
+    notify("SmugSync: Copy Finished (%d copied, %d failed)" % (copied,
+        len(failed)), message)
 
 def notify_upload_start(jobs):
     logging.info("Notifying upload start of %d files.", len(jobs))
@@ -190,26 +198,28 @@ def perform_copy_job(job):
     copied.sync()
 
 def perform_copy(jobs):
-    notify_copy_start(jobs)
     detect_dates(jobs)
+    copied, failed = 0, []
     for i, job in enumerate(jobs):
         try:
             perform_copy_job(job)
             logging.info("Imported %s (that's %d of %d)", job["origin"], i+1,
                     len(jobs))
+            copied += 1
         except:
             logging.info("Failed to copy %s.", job["origin"])
+            failed.append(job["origin"])
+    return copied, failed
 
-    notify_copy_finish()
-
-def copy_all():
-    files = scan_incoming()
-    logging.info("Recognized %d files.", len(files))
-    copy_jobs = get_copy_jobs(files)
+def copy_all(scanned):
+    notify_copy_start()
+    copy_jobs = get_copy_jobs(scanned)
     if not copy_jobs:
         logging.info("There were no new files.")
-        return
-    perform_copy(copy_jobs)
+        copied, failed = 0, []
+    else:
+        copied, failed = perform_copy(copy_jobs)
+    notify_copy_finish(copied, failed)
 
 def head(dic):
     key = dic.iterkeys().next()
@@ -252,13 +262,25 @@ def upload_all():
         logging.info("Upload failed after %d uploads. Maybe some other day.",
             done)
 
+def is_something_new(scanned):
+    global last_scanned
+    ret = scanned and last_scanned != scanned
+    last_scanned = scanned
+    return ret
+
 def process():
     while True:
         logging.info("Started checking!")
-        copy_all()
-        upload_all()
-        logging.info("We are done. :-)")
-        time.sleep(60)
+        scanned = scan_incoming()
+        if not is_something_new(scanned):
+            logging.info("Apparently nothing is new.")
+        else:
+            copy_all(scanned)
+            upload_all()
+            logging.info("We are done. :-)")
+        if "--repeat" not in sys.argv:
+            break
+        time.sleep(CHECK_INTERVAL)
 
 def main():
     try:
