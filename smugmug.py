@@ -47,7 +47,7 @@ class API(object):
         try:
             cate = self._call("smugmug.subcategories.get", 
                     {"CategoryID": category_id})
-            return dict((d["Name"], d["id"]) for d in cate["SubCategories"])
+            return dict((d["Title"], d["id"]) for d in cate["SubCategories"])
         except SmugmugException as e:
             resp = e.response
             if isinstance(resp, dict) and resp["code"] == 15: 
@@ -55,12 +55,14 @@ class API(object):
             raise
 
     def create_subcategory(self, category_id, name):
+        logging.info("Creating subcategory %s ..", name)
         return self._call("smugmug.subcategories.create",
                 {"CategoryID": category_id, "Name":
                     name})["SubCategory"]["id"]
 
 
     def create_album(self, name, category, options={}):
+        logging.info("Creating album %s ..", name)
         options.update({"Title": name, "CategoryID": category})
         return self._call("smugmug.albums.create", options)["Album"]["id"]
 
@@ -75,6 +77,7 @@ class API(object):
                 'X-Smug-AlbumID'  : album_id,
                 'X-Smug-FileName' : os.path.basename(path) }
         args.update(options)
+        logging.debug("Uploading %s ..", path)
         request = urllib2.Request(UPLOAD_URL, data, args)
         return self._http_request(request)["stat"]
 

@@ -234,7 +234,7 @@ def get_subcategory_id(subcategory_name):
     return subcategories[subcategory_name] 
 
 def get_album_id(job):
-    album_name = job["date"] + "-raw"
+    album_name = job["date"] + "-rawtest"
     if album_name not in albums:
         subcategory_name = "-".join(job["date"].split("-")[:2])
         subcategory_id = get_subcategory_id(subcategory_name)
@@ -247,6 +247,7 @@ def get_album_id(job):
 def upload_all():
     if not copied: return
     notify_upload_start(copied.values())
+    global api
 
     api = smugmug.API()
     api.login()
@@ -278,7 +279,11 @@ def upload_all():
                     done, cnt)
         notify_upload_finish(done)
     except Exception as e:
-        logging.info("Exception: %s", str(e))
+        logging.error("Exception: %s", str(e))
+        io = StringIO.StringIO()
+        traceback.print_exc(file=io)
+        io.seek(0)
+        logging.error("Stack trace:\n%s", io.read())
         notify_upload_fail(done)
         logging.info("Upload failed after %d uploads. Maybe some other day.",
             done)
