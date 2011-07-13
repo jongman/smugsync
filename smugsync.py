@@ -241,7 +241,7 @@ def get_album_id(job):
         albums[album_name] = api.create_album(album_name, category_id,
                 {"Public": HIDDEN_GALLERIES,
                  "SmugSearchable": HIDDEN_GALLERIES,
-                 "SubCategory": subcategory_id})
+                 "SubCategoryID": subcategory_id})
     return albums[album_name]
 
 def upload_all():
