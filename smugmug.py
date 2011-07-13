@@ -8,6 +8,11 @@ UPLOAD_URL='http://upload.smugmug.com/photos/xmlrawadd.mg'
 import sys, re, urllib, urllib2, urlparse, hashlib
 import traceback, os.path, json, logging
 
+class SmugmugException(Exception):
+    def __init__(self, response):
+        self.response = response
+        super(Exception, self).__init__()
+    pass
 
 class API(object):
     def __init__(self):
@@ -37,6 +42,23 @@ class API(object):
     def get_categories(self):
         cate = self._call("smugmug.categories.get")
         return dict((d["Title"], d["id"]) for d in cate["Categories"])
+
+    def get_subcategories(self, category_id):
+        try:
+            cate = self._call("smugmug.subcategories.get", 
+                    {"CategoryID": category_id})
+            return dict((d["Name"], d["id"]) for d in cate["SubCategories"])
+        except SmugmugException as e:
+            resp = e.response
+            if isinstance(resp, dict) and resp["code"] == 15: 
+                return []
+            raise
+
+    def create_subcategory(self, category_id, name):
+        return self._call("smugmug.subcategories.create",
+                {"CategoryID": category_id, "Name":
+                    name})["SubCategory"]["id"]
+
 
     def create_album(self, name, category, options={}):
         options.update({"Title": name, "CategoryID": category})
@@ -81,15 +103,18 @@ class API(object):
                     if match and match.group(1) != "_su=deleted":
                         self.su_cookie = match.group(1)
                 if result["stat"] != "ok":
-                    raise Exception("Bad result code")
+                    raise SmugmugException(result)
                 return result
+            except SmugmugException as e:
+                logging.error("SmugmugException: %s", str(e.response))
+                raise
             except Exception as e:
                 logging.error("Exception during request: %s", str(e))
                 continue
         logging.info("API request failed. Request was:\n%s\n"
                 "Response was:\n%s", request.get_full_url(),
                 str(response))
-        raise Exception("bah")
+        raise SmugmugException(response)
 
 if __name__ == "__main__":
     api = API()

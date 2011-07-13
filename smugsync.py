@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import time
+import traceback
 import datetime
 import minimal_exif_reader
 import hashlib
@@ -13,6 +14,7 @@ import sys
 from config import *
 import utils
 import smugmug
+import StringIO
 
 PROJECT_PATH = os.path.dirname(__file__)
 SHELF_PATH = os.path.join(PROJECT_PATH, "shelf.db")
@@ -225,15 +227,35 @@ def head(dic):
     key = dic.iterkeys().next()
     return key, dic[key]
 
+def get_subcategory_id(subcategory_name):
+    if subcategory_name not in subcategories:
+        subcategories[subcategory_name] = api.create_subcategory(category_id,
+                subcategory_name)
+    return subcategories[subcategory_name] 
+
+def get_album_id(job):
+    album_name = job["date"] + "-raw"
+    if album_name not in albums:
+        subcategory_name = "-".join(job["date"].split("-")[:2])
+        subcategory_id = get_subcategory_id(subcategory_name)
+        albums[album_name] = api.create_album(album_name, category_id,
+                {"Public": HIDDEN_GALLERIES,
+                 "SmugSearchable": HIDDEN_GALLERIES,
+                 "SubCategory": subcategory_id})
+    return albums[album_name]
+
 def upload_all():
     if not copied: return
     notify_upload_start(copied.values())
 
     api = smugmug.API()
     api.login()
+
+    global albums, category_id, subcategories
     albums = dict((alb["Title"], alb["id"]) for alb in api.get_albums())
     categories = api.get_categories()
-    category = categories[DEFAULT_CATEGORY]
+    category_id = categories[DEFAULT_CATEGORY]
+    subcategories = api.get_subcategories(category_id)
     done, cnt = 0, len(copied)
     try:
         jobs = [(val["dest"], key) for key, val in copied.iteritems()]
@@ -244,12 +266,9 @@ def upload_all():
             # ignore large files for now: need some other way to upload things
             if job["filesize"] >= MAX_FILE_SIZE: continue
             album_name = job["date"] + "-raw"
-            if album_name not in albums:
-                albums[album_name] = api.create_album(album_name, category,
-                        {"Public": HIDDEN_BY_DEFAULT,
-                        "SmugSearchable": HIDDEN_BY_DEFAULT})
+            album_id = get_album_id(job)
             api.upload(job["dest"], albums[album_name],
-                    {"X-Smug-Hidden": HIDDEN_BY_DEFAULT})
+                    {"X-Smug-Hidden": HIDDEN_PICTURES})
             del copied[key]
             copied.sync()
             uploaded[key] = job
@@ -290,6 +309,10 @@ def main():
         process()
     except Exception as e:
         logging.error("Uncaught exception. Message: %s. How sad.", str(e))
+        io = StringIO.StringIO()
+        traceback.print_exc(file=io)
+        io.seek(0)
+        logging.error("Stack trace:\n%s", io.read())
 
 if __name__ == "__main__":
     main()
