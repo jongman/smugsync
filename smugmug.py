@@ -2,11 +2,12 @@
 
 from config import *
 
-API_VERSION='1.2.2'
+API_VERSION='1.2.0'
 API_URL='https://api.smugmug.com/hack/json/1.2.0/'
 UPLOAD_URL='http://upload.smugmug.com/photos/xmlrawadd.mg'
 import sys, re, urllib, urllib2, urlparse, hashlib
 import traceback, os.path, json, logging
+
 
 class API(object):
     def __init__(self):
@@ -30,7 +31,7 @@ class API(object):
         options.update({"Title": name, "CategoryID": category})
         return self._call("smugmug.albums.create", options)["Album"]["id"]
 
-    def upload(self, path, album_id, hidden=False, options={}):
+    def upload(self, path, album_id, options={}):
         data = open(path, "rb").read()
         args = {'Content-Length'  : len(data),
                 'Content-MD5'     : hashlib.md5(data).hexdigest(),
@@ -38,17 +39,16 @@ class API(object):
                 'X-Smug-SessionID': self.session,
                 'X-Smug-Version'  : API_VERSION,
                 'X-Smug-ResponseType' : 'JSON',
-                'X-Smug-AlbumID'  : str(album_id),
-                'X-Smug-Hidden'   : str(hidden),
+                'X-Smug-AlbumID'  : album_id,
                 'X-Smug-FileName' : os.path.basename(path) }
         args.update(options)
-        request = urllib2.Request(UPLOAD_URL, data, options)
+        request = urllib2.Request(UPLOAD_URL, data, args)
         return self._http_request(request)["stat"]
 
     def _call(self, method, params={}):
         if self.session and "SessionID" not in params:
             params["SessionID"] = self.session
-        paramstrings = [urllib.quote(key) + "=" + urllib.quote(val) 
+        paramstrings = [urllib.quote(str(key)) + "=" + urllib.quote(str(val))
                 for key, val in params.iteritems()]
         paramstrings += ['method=' + method]
         url = urlparse.urljoin(API_URL, '?' + '&'.join(paramstrings))
@@ -72,7 +72,8 @@ class API(object):
                 if result["stat"] != "ok":
                     raise Exception("Bad result code")
                 return result
-            except:
+            except Exception as e:
+                logging.error("Exception during request: %s", str(e))
                 continue
         logging.info("API request failed. Request was:\n%s\n"
                 "Response was:\n%s", request.get_full_url(),

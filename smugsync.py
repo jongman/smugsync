@@ -11,6 +11,7 @@ import smtplib
 import sys
 from config import *
 import utils
+import smugmug
 
 PROJECT_PATH = os.path.dirname(__file__)
 SHELF_PATH = os.path.join(PROJECT_PATH, "shelf.db")
@@ -93,6 +94,11 @@ def notify_upload_finish():
             "Hello! Upload is finished so you'll be able to see your files "
             "soon.")
 
+def notify_upload_fail(uploaded):
+    notify("SmugSync: Upload Failed (after %d files)" % uploaded, 
+            "Hello! Sorry but loads failed. Maybe something is wrong. "
+            "I will automatically retry later, so no worries.")
+
 def get_digits(fn):
     ret = 0
     for ch in fn:
@@ -104,9 +110,12 @@ def compare_file_no(a, b):
     return get_digits(a) - get_digits(b)
 
 def get_jpg_date(path):
-    dt = minimal_exif_reader.MinimalExifReader(path).dateTimeOriginal()
-    assert dt
-    return "-".join(dt.split()[0].split(":"))
+    try:
+        dt = minimal_exif_reader.MinimalExifReader(path).dateTimeOriginal()
+        assert dt
+        return "-".join(dt.split()[0].split(":"))
+    except:
+        return None
 
 def get_file_size(path):
     return os.stat(path).st_size
@@ -190,10 +199,43 @@ def copy_all():
         return
     perform_copy(copy_jobs)
 
+def head(dic):
+    key = dic.iterkeys().next()
+    return key, dic[key]
+
 def upload_all():
     if not copied: return
     notify_upload_start(copied.values())
-    notify_upload_finish()
+
+    api = smugmug.API()
+    api.login()
+    albums = dict((alb["Title"], alb["id"]) for alb in api.get_albums())
+    categories = api.get_categories()
+    category = categories[DEFAULT_CATEGORY]
+    done, cnt = 0, len(copied)
+    try:        
+        while copied:
+            key, job = head(copied)
+            album_name = job["date"] + "-raw"
+            if album_name not in albums:
+                albums[album_name] = api.create_album(album_name, category,
+                        {"Public": HIDDEN_BY_DEFAULT,
+                        "SmugSearchable": HIDDEN_BY_DEFAULT})
+            api.upload(job["dest"], albums[album_name],
+                    {"X-Smug-Hidden": HIDDEN_BY_DEFAULT})
+            del copied[key]
+            copied.sync()
+            uploaded[key] = job
+            uploaded.sync()
+            done += 1
+            logging.info("Uploaded %s. That's %d out of %d.", job["dest"], 
+                    done, cnt)
+        notify_upload_finish()
+    except Exception as e:
+        logging.info("Exception: %s", str(e))
+        notify_upload_fail(done)
+        logging.info("Upload failed after %d uploads. Maybe some other day.",
+            done)
 
 def process():
     logging.info("Started checking!")
