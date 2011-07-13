@@ -1,0 +1,9 @@
+# -*- coding: utf-8 -*-
+
+SMUGMUG_ID = ""
+SMUGMUG_PASSWORD = ""
+GMAIL_ID = ""
+GMAIL_PASSWORD = ""
+
+READ_FROM = ""
+WRITE_TO = ""
