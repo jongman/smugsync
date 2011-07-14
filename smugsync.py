@@ -234,7 +234,7 @@ def get_subcategory_id(subcategory_name):
     return subcategories[subcategory_name] 
 
 def get_album_id(job):
-    album_name = job["date"] + "-rawtest"
+    album_name = ALBUM_FORMAT.format(date=job["date"])
     if album_name not in albums:
         subcategory_name = "-".join(job["date"].split("-")[:2])
         subcategory_id = get_subcategory_id(subcategory_name)
@@ -266,9 +266,8 @@ def upload_all():
             job = copied[key]
             # ignore large files for now: need some other way to upload things
             if job["filesize"] >= MAX_FILE_SIZE: continue
-            album_name = job["date"] + "-raw"
             album_id = get_album_id(job)
-            api.upload(job["dest"], albums[album_name],
+            api.upload(job["dest"], album_id, 
                     {"X-Smug-Hidden": HIDDEN_PICTURES})
             del copied[key]
             copied.sync()
