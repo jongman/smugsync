@@ -135,7 +135,7 @@ def get_digits(fn):
     return ret
 
 def compare_file_no(a, b):
-    return get_digits(a) - get_digits(b)
+    return get_digits(a["filename"]) - get_digits(b["filename"])
 
 def get_jpg_date(path):
     try:
