@@ -52,9 +52,15 @@ def scan_incoming():
     return sorted(ret)
 
 def md5file(file_path, max_len=None):
+    if max_len is None: max_len = get_file_size(file_path)
     md5 = hashlib.md5()
-    args = [] if max_len is None else [max_len]
-    md5.update(open(file_path, "rb").read(*args))
+    CHUNK = 1024*1024*4
+    fp = open(file_path, "rb")
+    while max_len > 0:
+        rd = min(max_len, CHUNK)
+        md5.update(fp.read(rd))
+        max_len -= rd
+
     return md5.hexdigest()
 
 def get_copy_jobs(files):
