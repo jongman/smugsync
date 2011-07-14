@@ -307,8 +307,8 @@ def process():
             logging.info("Apparently nothing is new.")
         else:
             copy_all(scanned)
-            upload_all()
-            logging.info("We are done. :-)")
+        upload_all()
+        logging.info("We are done. :-)")
         if "--repeat" not in sys.argv:
             break
         time.sleep(CHECK_INTERVAL)
