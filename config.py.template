@@ -2,27 +2,29 @@
 import logging
 
 LOGGING_LEVEL = logging.DEBUG
-DEFAULT_CATEGORY = ""
-HIDDEN_BY_DEFAULT = False
+DEFAULT_CATEGORY = "SomeExistingCategory"
+HIDDEN_GALLERIES = True
+HIDDEN_PICTURES = False
+ALBUM_FORMAT = "raw-{date}"
 
 RECOGNIZED_EXTS = ["jpg", "mov", "avi"]
 SIGNATURE_SIZE = 1024*1024
+CHECK_INTERVAL = 5
+MAX_FILE_SIZE = 10*1024*1024
 
 SMUGMUG_ID = ""
 SMUGMUG_PASSWORD = ""
 SMUGMUG_API = ""
 
 # notification setup
-SMTP_SERVER = "smtp.gmail.com:587"
-SMTP_SERVER = None
-SMTP_ID = ""
-SMTP_PASSWORD = ""
-FROM_EMAIL = ""
-TO_EMAIL = ""
-CHECK_INTERVAL = 60
+SMTP_SERVER = "smtp.smtpserver.com:587"
+SMTP_ID = "smtpuser@smtpserver.com"
+SMTP_PASSWORD = "smtppassword"
+FROM_EMAIL = "smtpuser@smtpserver.com"
+TO_EMAIL = "myemail@somewhere.com"
 
 READ_FROM = [
-        "",
-        "",
+        "folder1",
+        "folder2",
         ]
-WRITE_TO = ""
+WRITE_TO = "folder"
