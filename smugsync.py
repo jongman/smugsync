@@ -110,9 +110,9 @@ def notify_copy_finish(copied, failed):
     notify("SmugSync: Copy Finished (%d copied, %d failed)" % (copied,
         len(failed)), message)
 
-def notify_upload_start(jobs):
-    logging.info("Notifying upload start of %d files.", len(jobs))
-    notify("SmugSync: Uploading Started (%d files)" % len(jobs),
+def notify_upload_start(jobcount):
+    logging.info("Notifying upload start of %d files.", jobcount)
+    notify("SmugSync: Uploading Started (%d files)" % jobcount,
             "Hello! Just so you know I started uploading files from "
             "your hard drive. I'll let you know once it gets finished.")
 
@@ -251,8 +251,12 @@ def get_album_id(job):
     return albums[album_name]
 
 def upload_all():
-    if not copied: return
-    notify_upload_start(copied.values())
+    # temporary: filter out large files. I should figure out how to upload the
+    # large ones.
+    jobs = [(val["dest"], key) for key, val in copied.iteritems()
+            if val["filesize"] <= MAX_FILE_SIZE]
+    if not jobs: return
+    notify_upload_start(len(jobs))
     global api
 
     api = smugmug.API()
@@ -265,13 +269,10 @@ def upload_all():
     subcategories = api.get_subcategories(category_id)
     done, cnt = 0, len(copied)
     try:
-        jobs = [(val["dest"], key) for key, val in copied.iteritems()]
         jobs.sort()
         jobs.reverse()
         for _, key in jobs:
             job = copied[key]
-            # ignore large files for now: need some other way to upload things
-            if job["filesize"] >= MAX_FILE_SIZE: continue
             album_id = get_album_id(job)
             api.upload(job["dest"], album_id, 
                     {"X-Smug-Hidden": HIDDEN_PICTURES})
