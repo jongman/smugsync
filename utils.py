@@ -17,3 +17,8 @@ def setup_logging(log_path):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+def print_stack_trace():
+    io = StringIO.StringIO()
+    traceback.print_exc(file=io)
+    io.seek(0)
+    return io.read()

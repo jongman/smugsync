@@ -308,7 +308,12 @@ def process():
             logging.info("Apparently nothing is new.")
         else:
             copy_all(scanned)
-        upload_all()
+        try:
+            upload_all()
+        except SmugmugException as e:
+            logging.error("Smugmug gave us an exception. Response: %s.",
+                    e.response)
+            logging.error("Stack trace:\n%s", utils.print_stack_trace())
         logging.info("We are done. :-)")
         if "--repeat" not in sys.argv:
             break
@@ -320,10 +325,7 @@ def main():
         process()
     except Exception as e:
         logging.error("Uncaught exception. Message: %s. How sad.", str(e))
-        io = StringIO.StringIO()
-        traceback.print_exc(file=io)
-        io.seek(0)
-        logging.error("Stack trace:\n%s", io.read())
+        logging.error("Stack trace:\n%s", utils.print_stack_trace())
 
 if __name__ == "__main__":
     main()
