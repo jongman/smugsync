@@ -61,7 +61,7 @@ class API(object):
 
     def create_album(self, name, category, options={}):
         logging.info("Creating album %s ..", name)
-        options.update({"Name": name, "CategoryID": category})
+        options.update({"Title": name, "CategoryID": category})
         logging.debug("create_album %s", str(options))
         return self._call("smugmug.albums.create", options)["Album"]["id"]
 
