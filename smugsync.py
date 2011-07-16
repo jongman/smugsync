@@ -11,13 +11,16 @@ import shelve
 import shutil
 import smtplib
 import sys
-from config import *
 import utils
 import smugmug
 import StringIO
+import config
+import logging
 
 PROJECT_PATH = os.path.dirname(__file__)
 SHELF_PATH = os.path.join(PROJECT_PATH, "shelf.db")
+
+global uploaded, copied
 
 def open_shelf(filename):
     path = os.path.join(PROJECT_PATH, filename)
@@ -36,9 +39,9 @@ def get_extension(filename):
     return filename.split(".")[-1].lower()
 
 def scan_incoming():
-    extset = set([ext.lower() for ext in RECOGNIZED_EXTS])
+    extset = set([ext.lower() for ext in config.RECOGNIZED_EXTS])
     ret = []
-    for incoming in READ_FROM:
+    for incoming in config.READ_FROM:
         try:
             for path, __, files in os.walk(incoming):
                 ret += [os.path.join(path, file) for file in files
@@ -69,7 +72,7 @@ def get_copy_jobs(files):
         try:
             filesize = get_file_size(path)
             # read a small portion of the whole file to generate unique id
-            md5 = md5file(path, SIGNATURE_SIZE)
+            md5 = md5file(path, config.SIGNATURE_SIZE)
             key = "|".join([str(filesize), md5])
             if key in copied or key in uploaded: continue
             logging.info("Recognized key %s. Adding to copy queue.", key)
@@ -86,11 +89,11 @@ def get_copy_jobs(files):
 def notify(subject, msg):
     msg = "Subject: %s\n\n%s" % (subject, msg)
     logging.info("Sending notification:\n%s", msg)
-    if not SMTP_SERVER: return
-    server = smtplib.SMTP(SMTP_SERVER)
+    if not config.SMTP_SERVER: return
+    server = smtplib.SMTP(config.SMTP_SERVER)
     server.starttls()
-    server.login(SMTP_ID, SMTP_PASSWORD)
-    server.sendmail(FROM_EMAIL, TO_EMAIL, msg)
+    server.login(config.SMTP_ID, config.SMTP_PASSWORD)
+    server.sendmail(config.FROM_EMAIL, config.TO_EMAIL, msg)
     server.quit()
 
 def notify_copy_start():
@@ -118,12 +121,12 @@ def notify_upload_start(jobcount):
 
 def notify_upload_finish(done):
     logging.info("Notifying upload finish of %d files.", done)
-    notify("SmugSync: Upload Finished", 
+    notify("SmugSync: Upload Finished",
             "Hello! Upload is finished so you'll be able to see your files "
             "soon.")
 
 def notify_upload_fail(uploaded):
-    notify("SmugSync: Upload Failed (after %d files)" % uploaded, 
+    notify("SmugSync: Upload Failed (after %d files)" % uploaded,
             "Hello! Sorry but loads failed. Maybe something is wrong. "
             "I will automatically retry later, so no worries.")
 
@@ -132,10 +135,14 @@ def get_digits(fn):
     for ch in fn:
         if ch.isdigit():
             ret = ret * 10 + int(ch)
+    logging.info("get_digits(%s) = %d", fn, ret)
     return ret
 
 def compare_file_no(a, b):
-    return get_digits(a["filename"]) - get_digits(b["filename"])
+    diff = get_digits(a["filename"]) - get_digits(b["filename"])
+    if diff > 0: return 1
+    if diff < 0: return -1
+    return 0
 
 def get_jpg_date(path):
     try:
@@ -175,7 +182,7 @@ def detect_dates(jobs):
         jobs[i]["date"] = dates[i]
 
 def perform_copy_job(job):
-    target_dir = os.path.join(WRITE_TO, job["date"])
+    target_dir = os.path.join(config.WRITE_TO, job["date"])
     try:
         os.makedirs(target_dir)
     except OSError:
@@ -237,16 +244,16 @@ def get_subcategory_id(subcategory_name):
     if subcategory_name not in subcategories:
         subcategories[subcategory_name] = api.create_subcategory(category_id,
                 subcategory_name)
-    return subcategories[subcategory_name] 
+    return subcategories[subcategory_name]
 
 def get_album_id(job):
-    album_name = ALBUM_FORMAT.format(date=job["date"])
+    album_name = config.ALBUM_FORMAT.format(date=job["date"])
     if album_name not in albums:
         subcategory_name = "-".join(job["date"].split("-")[:2])
         subcategory_id = get_subcategory_id(subcategory_name)
         albums[album_name] = api.create_album(album_name, category_id,
-                {"Public": not HIDDEN_GALLERIES,
-                 "SmugSearchable": not HIDDEN_GALLERIES,
+                {"Public": not config.HIDDEN_GALLERIES,
+                 "SmugSearchable": not config.HIDDEN_GALLERIES,
                  "SubCategoryID": subcategory_id})
     return albums[album_name]
 
@@ -254,7 +261,7 @@ def upload_all():
     # temporary: filter out large files. I should figure out how to upload the
     # large ones.
     jobs = [(val["dest"], key) for key, val in copied.iteritems()
-            if val["filesize"] <= MAX_FILE_SIZE]
+            if val["filesize"] <= config.MAX_FILE_SIZE]
     if not jobs: return
     notify_upload_start(len(jobs))
     global api
@@ -265,7 +272,7 @@ def upload_all():
     global albums, category_id, subcategories
     albums = dict((alb["Title"], alb["id"]) for alb in api.get_albums())
     categories = api.get_categories()
-    category_id = categories[DEFAULT_CATEGORY]
+    category_id = categories[config.DEFAULT_CATEGORY]
     subcategories = api.get_subcategories(category_id)
     done, cnt = 0, len(copied)
     try:
@@ -274,14 +281,14 @@ def upload_all():
         for _, key in jobs:
             job = copied[key]
             album_id = get_album_id(job)
-            api.upload(job["dest"], album_id, 
-                    {"X-Smug-Hidden": HIDDEN_PICTURES})
+            api.upload(job["dest"], album_id,
+                    {"X-Smug-Hidden": config.HIDDEN_PICTURES})
             del copied[key]
             copied.sync()
             uploaded[key] = job
             uploaded.sync()
             done += 1
-            logging.info("Uploaded %s. That's %d out of %d.", job["dest"], 
+            logging.info("Uploaded %s. That's %d out of %d.", job["dest"],
                     done, cnt)
         notify_upload_finish(done)
     except Exception as e:
@@ -310,14 +317,15 @@ def process():
             copy_all(scanned)
         try:
             upload_all()
-        except SmugmugException as e:
+        except smugmug.SmugmugException as e:
             logging.error("Smugmug gave us an exception. Response: %s.",
                     e.response)
             logging.error("Stack trace:\n%s", utils.print_stack_trace())
         logging.info("We are done. :-)")
         if "--repeat" not in sys.argv:
             break
-        time.sleep(CHECK_INTERVAL)
+        reload(config)
+        time.sleep(config.CHECK_INTERVAL)
 
 def main():
     try:

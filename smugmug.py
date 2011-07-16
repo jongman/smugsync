@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from config import *
+import config
+import re, urllib, urllib2, urlparse, hashlib
+import os.path, json, logging
 
 API_VERSION='1.2.2'
 API_URL='https://secure.smugmug.com/services/api/json/1.2.2/'
 UPLOAD_URL='http://upload.smugmug.com/photos/xmlrawadd.mg'
-import sys, re, urllib, urllib2, urlparse, hashlib
-import traceback, os.path, json, logging
 
 class SmugmugException(Exception):
     def __init__(self, response):
@@ -20,9 +20,9 @@ class API(object):
 
     def login(self):
         res = self._call("smugmug.login.withPassword",
-                {"APIKey": SMUGMUG_API,
-                 "EmailAddress": SMUGMUG_ID,
-                 "Password": SMUGMUG_PASSWORD})
+                {"APIKey": config.SMUGMUG_API,
+                 "EmailAddress": config.SMUGMUG_ID,
+                 "Password": config.SMUGMUG_PASSWORD})
         self.session = res["Login"]["Session"]["id"]
 
     def get_albums(self):
@@ -39,16 +39,16 @@ class API(object):
 
     def get_categories(self):
         cate = self._call("smugmug.categories.get")
-        return dict((d["Title"], d["id"]) for d in cate["Categories"])
+        return dict((d["Name"], d["id"]) for d in cate["Categories"])
 
     def get_subcategories(self, category_id):
         try:
-            cate = self._call("smugmug.subcategories.get", 
+            cate = self._call("smugmug.subcategories.get",
                     {"CategoryID": category_id})
-            return dict((d["Title"], d["id"]) for d in cate["SubCategories"])
+            return dict((d["Name"], d["id"]) for d in cate["SubCategories"])
         except SmugmugException as e:
             resp = e.response
-            if isinstance(resp, dict) and resp["code"] == 15: 
+            if isinstance(resp, dict) and resp["code"] == 15:
                 return []
             raise
 
@@ -61,7 +61,7 @@ class API(object):
 
     def create_album(self, name, category, options={}):
         logging.info("Creating album %s ..", name)
-        options.update({"Title": name, "CategoryID": category})
+        options.update({"Name": name, "CategoryID": category})
         logging.debug("create_album %s", str(options))
         return self._call("smugmug.albums.create", options)["Album"]["id"]
 
