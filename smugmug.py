@@ -2,8 +2,8 @@
 
 from config import *
 
-API_VERSION='1.2.0'
-API_URL='https://api.smugmug.com/hack/json/1.2.0/'
+API_VERSION='1.2.2'
+API_URL='https://secure.smugmug.com/services/api/json/1.2.2/'
 UPLOAD_URL='http://upload.smugmug.com/photos/xmlrawadd.mg'
 import sys, re, urllib, urllib2, urlparse, hashlib
 import traceback, os.path, json, logging
@@ -30,14 +30,12 @@ class API(object):
 
     def get_images(self, album_id, album_key):
         return self._call("smugmug.images.get", {"AlbumID": album_id,
-            "AlbumKey": album_key})["Images"]
+            "AlbumKey": album_key})["Album"]["Images"]
 
     def change_image_setting(self, image_id, args={}):
         args = dict(args)
         args["ImageID"] = image_id
-        return self._call("smugmug.images.changeSettings", {"ImageID":
-            image_id})
-
+        return self._call("smugmug.images.changeSettings", args)
 
     def get_categories(self):
         cate = self._call("smugmug.categories.get")
