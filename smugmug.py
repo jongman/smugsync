@@ -65,7 +65,7 @@ class API(object):
         logging.debug("create_album %s", str(options))
         return self._call("smugmug.albums.create", options)["Album"]["id"]
 
-    def upload(self, path, album_id, options={}):
+    def upload(self, path, album_id, hidden=False, options={}):
         data = open(path, "rb").read()
         args = {'Content-Length'  : len(data),
                 'Content-MD5'     : hashlib.md5(data).hexdigest(),
@@ -76,6 +76,8 @@ class API(object):
                 'X-Smug-AlbumID'  : album_id,
                 'X-Smug-FileName' : os.path.basename(path) }
         args.update(options)
+        if hidden:
+            args['X-Smug-Hidden'] = 'true'
         logging.debug("Uploading %s ..", path)
         request = urllib2.Request(UPLOAD_URL, data, args)
         return self._http_request(request)["stat"]

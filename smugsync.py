@@ -281,8 +281,7 @@ def upload_all():
         for _, key in jobs:
             job = copied[key]
             album_id = get_album_id(job)
-            api.upload(job["dest"], album_id,
-                    {"X-Smug-Hidden": config.HIDDEN_PICTURES})
+            api.upload(job["dest"], album_id, hidden=config.HIDDEN_PICTURES)
             del copied[key]
             copied.sync()
             uploaded[key] = job
