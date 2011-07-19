@@ -32,6 +32,14 @@ class API(object):
         return self._call("smugmug.images.get", {"AlbumID": album_id,
             "AlbumKey": album_key})["Album"]["Images"]
 
+    def get_image_info(self, image_id, image_key):
+        return self._call("smugmug.images.getInfo",
+                          {"ImageID": image_id, "ImageKey": image_key})
+
+    def delete_image(self, image_id):
+        return self._call("smugmug.images.delete",
+                          {"ImageID": image_id})
+
     def change_image_setting(self, image_id, args={}):
         args = dict(args)
         args["ImageID"] = image_id
