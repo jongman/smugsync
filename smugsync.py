@@ -27,13 +27,18 @@ def open_shelf(filename):
     return shelve.open(path)
 
 def setup():
-    global copied, uploaded, last_scanned
+    global copied, uploaded, last_scanned, warnings
     copied = open_shelf("copied.db")
     uploaded = open_shelf("uploaded.db")
     last_scanned = []
 
     log_path = os.path.join(PROJECT_PATH, "smugsync.log")
     utils.setup_logging(log_path)
+    warnings = StringIO.StringIO()
+    handler = logging.StreamHandler(warnings)
+    handler.setLevel(logging.WARNING)
+    logging.getLogger("").addHandler(handler)
+
 
 def get_extension(filename):
     return filename.split(".")[-1].lower()
@@ -95,6 +100,11 @@ def notify(subject, msg):
     server.login(config.SMTP_ID, config.SMTP_PASSWORD)
     server.sendmail(config.FROM_EMAIL, config.TO_EMAIL, msg)
     server.quit()
+
+def notify_warnings(warnings):
+    notify("SmugSync: %d warnings" % (len(warnings.split("\n"))),
+           "Hello! I got some warnings from last iterations. Prolly some "
+           "duplicate files. See for yourself:\n%s" % warnings)
 
 def notify_copy_start():
     logging.info("Start scanning for copy jobs ..")
@@ -188,6 +198,12 @@ def perform_copy_job(job):
     except OSError:
         pass
     target_path = os.path.join(target_dir, job["filename"])
+    if os.path.exists(target_path):
+        logging.warning("target_path already exists: origin %s target_path %s",
+                        job["origin"],
+                        target_path)
+        return
+
     job["dest"] = target_path
     retries = 0
     while retries < 3:
@@ -307,7 +323,12 @@ def is_something_new(scanned):
     return ret
 
 def process():
+    global warnings
     while True:
+
+        warnings.seek(0)
+        warnings.truncate(0)
+
         logging.info("Started checking!")
         scanned = scan_incoming()
         if not is_something_new(scanned):
@@ -321,6 +342,13 @@ def process():
                     e.response)
             logging.error("Stack trace:\n%s", utils.print_stack_trace())
         logging.info("We are done. :-)")
+
+        warnings.seek(0)
+        warnings_logged = warnings.read()
+        if warnings_logged:
+            logging.info("There were some warnings logged. Notifying.")
+            notify_warnings(warnings_logged)
+
         if "--repeat" not in sys.argv:
             break
         reload(config)
