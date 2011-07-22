@@ -178,14 +178,12 @@ def detect_dates(jobs):
     curdate = None
     # for undetermined dates, populate by looking at other files
     for i in xrange(len(jobs)):
-        curdate = curdate or dates[i]
-        if dates[i] is None:
-            dates[i] = curdate
+        if dates[i]: curdate = dates[i]
+        if dates[i] is None: dates[i] = curdate
     curdate = None
     for i in xrange(len(jobs)-1, -1, -1):
-        curdate = curdate or dates[i]
-        if dates[i] is None:
-            dates[i] = curdate
+        if dates[i]: curdate = dates[i]
+        if dates[i] is None: dates[i] = curdate
     for i in xrange(len(jobs)):
         if dates[i] is None:
             dates[i] = detect_mod_date(job["origin"])
