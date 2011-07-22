@@ -25,6 +25,11 @@ class API(object):
                  "Password": config.SMUGMUG_PASSWORD})
         self.session = res["Login"]["Session"]["id"]
 
+    def change_album_setting(self, album_id, args={}):
+        args = dict(args)
+        args["AlbumID"] = album_id
+        return self._call("smugmug.albums.changeSettings", args)
+
     def get_albums(self):
         return self._call("smugmug.albums.get")["Albums"]
 

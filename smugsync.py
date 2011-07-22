@@ -269,6 +269,9 @@ def get_album_id(job):
                 {"Public": not config.HIDDEN_GALLERIES,
                  "SmugSearchable": not config.HIDDEN_GALLERIES,
                  "SubCategoryID": subcategory_id})
+        api.change_album_setting(albums[album_name],
+                                 {"SortDirection": "false",
+                                  "SortMethod": "DateTimeOriginal"})
     return albums[album_name]
 
 def upload_all():
