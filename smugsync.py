@@ -16,6 +16,7 @@ import smugmug
 import StringIO
 import config
 import logging
+import json
 
 PROJECT_PATH = os.path.dirname(__file__)
 SHELF_PATH = os.path.join(PROJECT_PATH, "shelf.db")
@@ -43,10 +44,11 @@ def setup():
 def get_extension(filename):
     return filename.split(".")[-1].lower()
 
-def scan_incoming():
+def scan_incoming(read_from=None):
+    read_from = read_from or config.READ_FROM
     extset = set([ext.lower() for ext in config.RECOGNIZED_EXTS])
     ret = []
-    for incoming in config.READ_FROM:
+    for incoming in read_from:
         try:
             for path, __, files in os.walk(incoming):
                 ret += [os.path.join(path, file) for file in files
@@ -228,6 +230,8 @@ def perform_copy_job(job):
 
 def perform_copy(jobs):
     detect_dates(jobs)
+    print json.dumps(jobs, indent=4)
+
     copied, failed = 0, []
     for i, job in enumerate(jobs):
         try:
