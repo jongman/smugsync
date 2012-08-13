@@ -45,6 +45,9 @@ class API(object):
     def delete_image(self, image_id):
         return self._call("smugmug.images.delete",
                           {"ImageID": image_id})
+    def delete_album(self, album_id):
+        return self._call("smugmug.albums.delete",
+                          {"AlbumID": album_id})
 
     def change_image_setting(self, image_id, args={}):
         args = dict(args)
@@ -92,7 +95,7 @@ class API(object):
         args.update(options)
         if hidden:
             args['X-Smug-Hidden'] = 'true'
-        logging.debug("Uploading %s ..", path)
+        #logging.debug("Uploading %s ..", path)
         request = urllib2.Request(UPLOAD_URL, data, args)
         return self._http_request(request)["stat"]
 
@@ -123,12 +126,14 @@ class API(object):
                 if result["stat"] != "ok":
                     raise SmugmugException(result)
                 return result
-            except SmugmugException as e:
-                logging.error("SmugmugException: %s", str(e.response))
+            except:
                 raise
-            except Exception as e:
-                logging.error("Exception during request: %s", str(e))
-                continue
+            # except SmugmugException as e:
+            #     logging.error("SmugmugException: %s", str(e.response))
+            #     raise
+            # except Exception as e:
+            #     logging.error("Exception during request: %s", str(e))
+            #     continue
         logging.info("API request failed. Request was:\n%s\n"
                 "Response was:\n%s", request.get_full_url(),
                 str(response))

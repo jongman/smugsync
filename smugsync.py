@@ -74,6 +74,7 @@ def md5file(file_path, max_len=None):
     return md5.hexdigest()
 
 def get_copy_jobs(files):
+    global uploaded
     copy = []
     for path in files:
         try:
@@ -230,7 +231,7 @@ def perform_copy_job(job):
 
 def perform_copy(jobs):
     detect_dates(jobs)
-    print json.dumps(jobs, indent=4)
+    # print json.dumps(jobs, indent=4)
 
     copied, failed = 0, []
     for i, job in enumerate(jobs):

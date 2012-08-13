@@ -6,6 +6,8 @@ import smugsync
 import sys
 import logging
 import utils
+import traceback
+import StringIO
 
 assert len(sys.argv) == 4, "need to have (dir) (categoryname) (subcategoryname)"
 directory, category, subcategory = sys.argv[1:]
@@ -35,20 +37,37 @@ def get_album_id(name):
 
 uploaded = shelve.open("uploader.data")
 def upload(path):
-    if path in uploaded: return
-    dir, filename = os.path.split(path)
-
-    album_name = dir.replace("\\", "/")
+    if path in uploaded:
+        #logging.info("%s already uploaded", path)
+        return
+    dir = os.path.relpath(os.path.dirname(path),
+                          directory)
+    album_name = dir.decode("euc-kr").replace("\\", "/").encode("utf-8")
     album_id = get_album_id(album_name)
-    api.upload(path, album_id, hidden=True)
+    try:
+        api.upload(path, album_id, hidden=True)
+    except Exception as e:
+        print "Exception: %s" % str(e)
+        io = StringIO.StringIO()
+        traceback.print_exc(file=io)
+        io.seek(0)
+        print "Stack trace:\n%s" % io.read()
+        raise
 
     uploaded[path] = True
     uploaded.sync()
 
-utils.setup_logging("uploader.log")
-logging.info("Scanning..")
+#utils.setup_logging("uploader.log", "mbcs")
+#logging.info("Scanning..")
 files = smugsync.scan_incoming([directory])
-logging.info("Scanned %d jobs.", len(files))
+# for file in files:
+#     file = file.decode("euc-kr")
+#     print type(file), file
+#     break
+# files = []
+#logging.info("Scanned %d jobs.", len(files))
 for i, file in enumerate(files):
-    logging.info("Uploading %s (%d out of %d)", file, i+1, len(files))
+    #file = file.decode("euc-kr")
+    print "uploading", i+1, "of", len(files)
+    #logging.info("Uploading %d out of %d", i+1, len(files))
     upload(file)
